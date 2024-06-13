@@ -33,7 +33,7 @@ def show_settings():
             "email": "john@example.com",
             "phone_number": "+1 (555) 123-4567"
         }.get(key, "")
-        st.session_state.user_info[key] = st.sidebar.text_input(label, st.session_stateuser_info[key], placeholder=placeholder, key=f"user_info_{key}")
+        st.session_state.user_info[key] = st.sidebar.text_input(label, st.session_state.user_info[key], placeholder=placeholder, key=f"user_info_{key}")
 
     st.sidebar.subheader("SMTP Configurations")
     smtp_configs = st.session_state.smtp_configs.copy()
@@ -49,7 +49,7 @@ def show_settings():
                     smtp.login(config["username"], config["password"])
                     smtp.quit()
                     st.success(f"Configuration {i+1} is valid.")
-                except smtplibSMTPAuthenticationError:
+                except smtplib.SMTPAuthenticationError:
                     st.error(f"Authentication failed for Configuration {i+1}.")
                 except Exception as e:
                     st.error(f"Error checking Configuration {i+1}: {e}")
@@ -61,7 +61,7 @@ def show_settings():
     st.sidebar.subheader("Proxy Configurations")
     proxies = st.session_state.proxies.copy()
     for i, proxy in enumerate(proxies):
-        with st.sidebar.expander(f"1}"):
+        with st.sidebar.expander(f"Proxy {i+1}"):
             proxy = st.text_input(f"Proxy {i+1}", proxy, key=f"proxy_{i}")
             proxies[i] = proxy
 
@@ -115,7 +115,7 @@ def scrape_domains(domains):
             meta_description = meta_description.get("content", "") if meta_description else ""
             main_text = " ".join([p.get_text() for p in soup.find_all("p")])
 
-            emails =(re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", response.text))
+            emails = set(re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", response.text))
             emails.update([link.get("href").replace("mailto:", "") for link in soup.find_all("a", href=re.compile(r"mailto:"))])
             for element in soup.find_all(text=re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"), recursive=True):
                 emails.add(element)
@@ -152,10 +152,10 @@ def scrape_domains(domains):
             outreach_email = response.json()["choices"][0]["message"]["content"].strip()
 
             email_prompt = f"Here are the email addresses found on the website {domain_name}:\n\n{', '.join(emails)}\n\nBased on the website content and the personalized outreach email, which email address would be the most appropriate to send the outreach to? Please make sure to only respond with the suggested email, nothing else!"
-            email_data = {"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": email_prompt}, {"role": "assistant", "content": outreach_email}], "max_00, "n": 1, "stop": None, "temperature": 0.7}
+            email_data = {"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": email_prompt}, {"role": "assistant", "content": outreach_email}], "max_tokens": 500, "n": 1, "stop": None, "temperature": 0.7}
             email_response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=email_data)
             email_response.raise_for_status()
-            suggested_email = email_response.json()["choices[0]["message"]["content"].strip()
+            suggested_email = email_response.json()["choices"][0]["message"]["content"].strip()
 
             domain_data.append({"domain": domain_name, "outreach_email": outreach_email, "suggested_email": suggested_email})
         except requests.exceptions.RequestException as e:
@@ -208,3 +208,4 @@ if st.button("Scrape SERPs"):
     st.session_state.domain_data = scrape_domains(domains)
 
 show_domain_data()
+
